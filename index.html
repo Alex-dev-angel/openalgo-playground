@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>🧪 OpenAlgo WebSocket Tester</title>
+  <style>
+    body {
+      background: #121212;
+      color: #eee;
+      font-family: monospace;
+      padding: 20px;
+    }
+
+    input, select, button {
+      background: #222;
+      color: #fff;
+      border: 1px solid #444;
+      padding: 6px 10px;
+      font-size: 14px;
+      margin: 5px 5px 10px 0;
+    }
+
+    label {
+      margin-right: 8px;
+    }
+
+    .section {
+      margin-bottom: 20px;
+    }
+
+    #output {
+      background: #1e1e1e;
+      padding: 10px;
+      border-radius: 5px;
+      white-space: pre-wrap;
+      max-height: 500px;
+      overflow-y: auto;
+      border: 1px solid #444;
+    }
+  </style>
+</head>
+<body>
+
+  <h2>🔌 OpenAlgo WebSocket Tester</h2>
+
+  <div class="section">
+    <label>WebSocket URL:</label>
+    <input type="text" id="wsurl" value="ws://127.0.0.1:8765" style="width: 300px;" />
+    <label>API Key:</label>
+    <input type="text" id="apikey" value="your_api_key_here" style="width: 300px;" />
+    <button onclick="connect()">Connect</button>
+  </div>
+
+  <div class="section">
+    <label>Exchange:</label>
+    <input type="text" id="exchange" value="NSE" />
+    <label>Symbol:</label>
+    <input type="text" id="symbol" value="RELIANCE" />
+    <label>Mode:</label>
+    <select id="mode">
+      <option value="1">LTP (Mode 1)</option>
+      <option value="2" selected>Quote (Mode 2)</option>
+      <option value="3">Depth (Mode 3)</option>
+    </select>
+    <button onclick="subscribe()">Subscribe</button>
+    <button onclick="unsubscribe()">Unsubscribe</button>
+  </div>
+
+  <div id="output">Waiting for connection...</div>
+
+  <script>
+    let ws;
+    let isConnected = false;
+
+    function log(message) {
+      const output = document.getElementById("output");
+      output.innerText += message + "\n";
+      output.scrollTop = output.scrollHeight;
+    }
+
+    function connect() {
+      const apiKey = document.getElementById("apikey").value;
+      const wsurl = document.getElementById("wsurl").value;
+      const output = document.getElementById("output");
+
+      output.innerText = "🔌 Connecting to WebSocket...\n";
+
+      ws = new WebSocket(wsurl);
+
+      ws.onopen = () => {
+        log("✅ Connected. Sending authentication...");
+        const authMessage = {
+          action: "authenticate",
+          api_key: apiKey
+        };
+        ws.send(JSON.stringify(authMessage));
+        isConnected = true;
+      };
+
+      ws.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+        log("📨 Received:\n" + JSON.stringify(data, null, 2));
+      };
+
+      ws.onerror = (err) => {
+        log("❌ WebSocket error: " + err.message);
+      };
+
+      ws.onclose = () => {
+        log("🔌 WebSocket connection closed.");
+        isConnected = false;
+      };
+    }
+
+    function subscribe() {
+      if (!ws || !isConnected) {
+        alert("Please connect first.");
+        return;
+      }
+
+      const exchange = document.getElementById("exchange").value;
+      const symbol = document.getElementById("symbol").value;
+      const mode = parseInt(document.getElementById("mode").value);
+
+      const msg = {
+        action: "subscribe",
+        symbol: symbol,
+        exchange: exchange,
+        mode: mode,
+        depth: mode === 3 ? 5 : undefined // only include depth for mode 3
+      };
+
+      ws.send(JSON.stringify(msg));
+      log(`📡 Subscribed to ${exchange}:${symbol} (Mode ${mode})`);
+    }
+
+    function unsubscribe() {
+      if (!ws || !isConnected) {
+        alert("Please connect first.");
+        return;
+      }
+
+      const exchange = document.getElementById("exchange").value;
+      const symbol = document.getElementById("symbol").value;
+      const mode = parseInt(document.getElementById("mode").value);
+
+      const msg = {
+        action: "unsubscribe",
+        symbol: symbol,
+        exchange: exchange,
+        mode: mode
+      };
+
+      ws.send(JSON.stringify(msg));
+      log(`❎ Unsubscribed from ${exchange}:${symbol} (Mode ${mode})`);
+    }
+  </script>
+
+</body>
+</html>
